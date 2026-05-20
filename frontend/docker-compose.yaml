@@ -1,0 +1,46 @@
+name: dataplatform-frontend
+
+services:
+  frontend:
+    image: openresty/openresty:alpine
+    container_name: dataplatform_frontend
+    restart: unless-stopped
+    networks:
+      - dataplatform
+    volumes:
+      - /path/to/frontend/dist:/usr/local/openresty/nginx/html:ro
+      - /path/to/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dataplatform"
+      # HTTP Router (redirect to HTTPS)
+      - "traefik.http.routers.dataplatform-frontend-insecure.entrypoints=http"
+      - "traefik.http.routers.dataplatform-frontend-insecure.rule=Host(`${DATAPLATFORM_DOMAIN}`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.dataplatform-frontend-insecure.middlewares=frontend-redirect-https@docker"
+      - "traefik.http.routers.dataplatform-frontend-insecure.service=noop@internal"
+
+      # HTTPS Router for frontend (exclude /api)
+      - "traefik.http.routers.dataplatform-frontend.entrypoints=https"
+      - "traefik.http.routers.dataplatform-frontend.tls=true"
+      - "traefik.http.routers.dataplatform-frontend.rule=Host(`${DATAPLATFORM_DOMAIN}`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.dataplatform-frontend.service=dataplatform-frontend-service"
+      - "traefik.http.routers.dataplatform-frontend.middlewares=gzip@docker"
+
+      # Frontend Service
+      - "traefik.http.services.dataplatform-frontend-service.loadbalancer.server.port=80"
+
+      # Middleware to redirect to HTTPS
+      - "traefik.http.middlewares.frontend-redirect-https.redirectscheme.scheme=https"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 3s
+      timeout: 30s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+networks:
+  dataplatform:
+    external: true

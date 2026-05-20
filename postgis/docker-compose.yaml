@@ -1,0 +1,36 @@
+name: dataplatform-postgis
+
+services:
+  postgis:
+    image: postgis/postgis:17-3.5
+    container_name: dataplatform-postgis
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-harbin}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+
+    ports:
+      - "${POSTGIS_PORT:-5432}:5432"
+
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./backup:/backup
+      - ./init_db:/init_db
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        compress: "true"

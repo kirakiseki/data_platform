@@ -1,0 +1,29 @@
+name: data-platform
+
+services:
+  dev:
+    image: cuda124dev:latest
+    container_name: data-platform-dev
+    shm_size: '32gb'
+    restart: unless-stopped
+    ports:
+      - "2222:22"      # SSH
+      - "3333:3333"    # Frontend (Vite dev server)
+      - "8000:8000"    # Backend (FastAPI)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /data/dev/.vscode-server:/root/.vscode-server
+      - /data/dev/.cache:/root/.cache
+      - ./startup_scripts:/etc/startup_scripts
+      - /data/dataplatform:/root/dataplatform
+    network_mode: "bridge"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

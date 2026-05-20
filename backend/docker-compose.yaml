@@ -1,0 +1,51 @@
+name: dataplatform-backend
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dataplatform_backend
+    restart: unless-stopped
+    networks:
+      - dataplatform
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dataplatform"
+      # HTTP Router (redirect to HTTPS) - for /api path
+      - "traefik.http.routers.dataplatform-backend-insecure.entrypoints=http"
+      - "traefik.http.routers.dataplatform-backend-insecure.rule=Host(`${DATAPLATFORM_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.dataplatform-backend-insecure.middlewares=backend-redirect-https@docker"
+      - "traefik.http.routers.dataplatform-backend-insecure.service=noop@internal"
+
+      # HTTPS Router for /api
+      - "traefik.http.routers.dataplatform-backend.entrypoints=https"
+      - "traefik.http.routers.dataplatform-backend.tls=true"
+      - "traefik.http.routers.dataplatform-backend.rule=Host(`${DATAPLATFORM_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.dataplatform-backend.service=dataplatform-backend-service"
+      - "traefik.http.routers.dataplatform-backend.middlewares=gzip@docker,backend-strip-api-prefix@docker"
+
+      # HTTP Service
+      - "traefik.http.services.dataplatform-backend-service.loadbalancer.server.port=8000"
+
+      # Middleware to redirect to HTTPS
+      - "traefik.http.middlewares.backend-redirect-https.redirectscheme.scheme=https"
+
+      # Middleware to strip /api prefix
+      - "traefik.http.middlewares.backend-strip-api-prefix.stripprefix.prefixes=/api"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "http://127.0.0.1:8000/"]
+      interval: 3s
+      timeout: 30s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+networks:
+  dataplatform:
+    external: true

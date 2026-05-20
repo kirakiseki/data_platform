@@ -1,0 +1,14 @@
+[logging]
+log_level = "INFO" # Available levels: DEBUG, INFO, WARNING, ERROR
+third_party_libs = ["uvicorn", "uvicorn.access", "sqlalchemy"]
+
+[database]
+url = "localhost"           # Replace with your PostgreSQL host
+port = 5432
+username = "postgres"       # Replace with your database username
+password = "your_password"  # Replace with your database password
+database = "harbin"
+health_timeout = 3 # timeout for checking database connection, in seconds
+
+[server]
+root_path = "/api"
